@@ -8,7 +8,7 @@ Forked from <https://github.com/Kaid00/joplin-random-note>.
 
 - [Installation](#installation)
 - [Usage](#usage)
-- [Development](#usage)
+- [Development](#development)
 - [Building the plugin](#building-the-plugin)
 
 ## Installation
@@ -25,11 +25,18 @@ Forked from <https://github.com/Kaid00/joplin-random-note>.
     - Alternatively you can also disable the plugin by clicking on the toggle button
 - Restart Joplin
 
+## Features
+
+- Open random a random note by hotkey, toolbar button or menu
+- Exclude notes or notebooks
+- Exclude finished todos
+- Get random notes from specific notebooks only
+
 ## Usage
 
 ### Defualt Hotkey
 
-By defualt you can use the hotkey `Ctrl+Alt+R` to open a random note.
+By default you can use the hotkey `Ctrl+Alt+R` to open a random note.
 
 ### Tool bar button
 
