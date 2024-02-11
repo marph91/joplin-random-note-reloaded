@@ -6,7 +6,7 @@
   "name": "Random Note Reloaded",
   "description": "Opens a random note from your workspace",
   "author": "Fork: Marph, Original: Azamah Junior",
-  "homepage_url": "https://github.com/marph91/joplin-random-note-reloaded/blob/master/README.md",
+  "homepage_url": "https://github.com/marph91/joplin-random-note-reloaded/",
   "repository_url": "https://github.com/marph91/joplin-random-note-reloaded.git",
   "keywords": ["note", "random", "random note"]
 }
