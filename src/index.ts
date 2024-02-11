@@ -5,6 +5,10 @@ import {
   SettingItemType,
 } from 'api/types';
 
+function arrayFromCsv(csv: string) {
+  return csv ? csv.split(',') : [];
+}
+
 joplin.plugins.register({
   onStart: async function () {
     // Registering section
@@ -41,6 +45,33 @@ joplin.plugins.register({
         description: 'Separate your keys with a +',
         label: 'Enter Custom Hotkey',
       },
+
+      excludedNotes: {
+        value: '',
+        type: SettingItemType.String,
+        section: 'openRandomNoteSection',
+        public: true,
+        description: 'Comma separated list of note IDs',
+        label: 'Excluded Notes',
+      },
+
+      // TODO: find best way to store arrays
+      // excludedNotes: {
+      //   value: [],
+      //   type: SettingItemType.Array,
+      //   section: 'openRandomNoteSection',
+      //   public: false,  // isn't displayed anyway
+      //   label: 'Excluded Notes',
+      // },
+
+      excludedNotebooks: {
+        value: '',
+        type: SettingItemType.String,
+        section: 'openRandomNoteSection',
+        public: true,
+        description: 'Comma separated list of notebook IDs',
+        label: 'Excluded Notebooks',
+      },
     });
 
     // Commands
@@ -52,36 +83,109 @@ joplin.plugins.register({
         // get all notes
         // https://joplinapp.org/help/api/references/rest_api#pagination
         let response;
-        let notes = [];
-        let pageNumber = 1;
+        let allNoteIds = [];
+        let page = 1;
         do {
           response = await joplin.data.get(['notes'], {
-            page: pageNumber++,
+            page: page++,
+            fields: ['id'],
             limit: 100,
           });
-          notes.push(...response.items);
+          for (const note of response.items) {
+            allNoteIds.push(note.id);
+          }
         } while (response.has_more != false);
 
-        console.log(`[Random Note] Total notes: ${notes.length}`);
-        if (!notes.length) return;
+        console.debug(`[Random Note] Total notes: ${allNoteIds.length}`);
+        if (!allNoteIds.length) return;
 
         // exclude the currently selected note
         const currentNote = await joplin.workspace.selectedNote();
-        const filteredNotes = notes.filter((note) => {
-          if (currentNote.id != note.id) {
-            return note;
-          }
-        });
+        // excluded notes from settings
+        const excludedNotes = arrayFromCsv(
+          await joplin.settings.value('excludedNotes')
+        );
+        // excluded notebooks from settings
+        const excludedNotebooks = arrayFromCsv(
+          await joplin.settings.value('excludedNotebooks')
+        );
+        // get all notes in the notebook
+        const excludedNotebookNotes = [];
+        for (const notebookId of excludedNotebooks) {
+          page = 1;
+          do {
+            response = await joplin.data.get(['folders', notebookId, 'notes'], {
+              page: page,
+              fields: ['id'],
+              limit: 100,
+            });
+            page += 1;
+            for (const note of response.items) {
+              excludedNotebookNotes.push(note.id);
+            }
+            // excludedNotebookNotes.push(...response.items);
+          } while (response.has_more);
+        }
+        // merge all excluded notes
+        const allExcludedIdsUnique = Array.from(
+          new Set([currentNote.id].concat(excludedNotes, excludedNotebookNotes))
+        );
+        console.debug(
+          `[Random Note] Excluding ${allExcludedIdsUnique.length} notes.`
+        );
+
+        // finally exclude all notes to exclude
+        // https://stackoverflow.com/a/1723220/7410886
+        const filteredNotes = allNoteIds.filter(
+          (x) => !allExcludedIdsUnique.includes(x)
+        );
+        console.debug(`[Random Note] Selected notes: ${filteredNotes.length}`);
 
         // choose a random note
         // https://stackoverflow.com/a/5915122/7410886
         const randomNoteIndex = Math.floor(
           Math.random() * filteredNotes.length
         );
-        console.log(`[Random Note] Random index: ${randomNoteIndex}`);
+        console.debug(`[Random Note] Random index: ${randomNoteIndex}`);
         await joplin.commands.execute(
           'openNote',
-          filteredNotes[randomNoteIndex].id
+          filteredNotes[randomNoteIndex]
+        );
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'noteContextMenuExclude',
+      label: 'Random Note: Exclude',
+      execute: async (noteIds: string[]) => {
+        console.debug(`[Random Note] Excluding notes: ${noteIds}`);
+        const excludedNotes = arrayFromCsv(
+          await joplin.settings.value('excludedNotes')
+        );
+        excludedNotes.push(...noteIds);
+        // Remove duplicated IDs: https://stackoverflow.com/a/9229821/7410886
+        const excludedNotesUnique = Array.from(new Set(excludedNotes));
+        await joplin.settings.setValue(
+          'excludedNotes',
+          excludedNotesUnique.join(',')
+        );
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'notebookContextMenuExclude',
+      label: 'Random Note: Exclude',
+      execute: async (notebookId: string) => {
+        console.debug(`[Random Note] Excluding notebook: ${notebookId}`);
+        const excludedNotebooks = arrayFromCsv(
+          await joplin.settings.value('excludedNotebooks')
+        );
+        excludedNotebooks.push(notebookId);
+        // Remove duplicated IDs: https://stackoverflow.com/a/9229821/7410886
+        const excludedNotebooksUnique = Array.from(new Set(excludedNotebooks));
+        await joplin.settings.setValue(
+          'excludedNotebooks',
+          excludedNotebooksUnique.join(',')
         );
       },
     });
@@ -150,5 +254,17 @@ joplin.plugins.register({
         ToolbarButtonLocation.EditorToolbar
       );
     }
+
+    // Modify excluded notes and notebooks.
+    await joplin.views.menuItems.create(
+      'noteContextMenuItem1',
+      'noteContextMenuExclude',
+      MenuItemLocation.NoteListContextMenu
+    );
+    await joplin.views.menuItems.create(
+      'notebookContextMenuItem1',
+      'notebookContextMenuExclude',
+      MenuItemLocation.FolderContextMenu
+    );
   },
 });
