@@ -29,9 +29,9 @@ Forked from <https://github.com/Kaid00/joplin-random-note>.
 ## Features
 
 - Open random a random note by hotkey, toolbar button or menu
-- Exclude notes or notebooks
-- Exclude finished todos
-- Get random notes from specific notebooks only
+- Exclude notes or notebooks (by right-click)
+- Exclude finished todos (by settings)
+- Get random notes from specific notebooks only (by right-click)
 
 ## Usage
 
