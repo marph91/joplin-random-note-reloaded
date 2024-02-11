@@ -46,6 +46,15 @@ joplin.plugins.register({
         label: 'Enter Custom Hotkey',
       },
 
+      rootNotebooks: {
+        value: '',
+        type: SettingItemType.String,
+        section: 'openRandomNoteSection',
+        public: true,
+        description: 'Consider notes from these notebooks only',
+        label: 'Root Notebooks',
+      },
+
       excludedNotes: {
         value: '',
         type: SettingItemType.String,
@@ -80,21 +89,49 @@ joplin.plugins.register({
       label: 'Open a random note',
       iconName: 'fas fa-random',
       execute: async () => {
-        // get all notes
-        // https://joplinapp.org/help/api/references/rest_api#pagination
+        const rootNotebooks = arrayFromCsv(
+          await joplin.settings.value('rootNotebooks')
+        );
         let response;
         let allNoteIds = [];
-        let page = 1;
-        do {
-          response = await joplin.data.get(['notes'], {
-            page: page++,
-            fields: ['id'],
-            limit: 100,
-          });
-          for (const note of response.items) {
-            allNoteIds.push(note.id);
+        let page;
+        if (rootNotebooks.length !== 0) {
+          // get all notes in the root notebooks
+          console.debug(
+            `[Random Note] Get notes from root notebooks: ${rootNotebooks}`
+          );
+          for (const notebookId of rootNotebooks) {
+            page = 1;
+            do {
+              response = await joplin.data.get(
+                ['folders', notebookId, 'notes'],
+                {
+                  page: page++,
+                  fields: ['id'],
+                  limit: 100,
+                }
+              );
+              for (const note of response.items) {
+                allNoteIds.push(note.id);
+              }
+            } while (response.has_more != false);
           }
-        } while (response.has_more != false);
+        } else {
+          // get all notes
+          console.debug('[Random Note] Get all notes');
+          // https://joplinapp.org/help/api/references/rest_api#pagination
+          page = 1;
+          do {
+            response = await joplin.data.get(['notes'], {
+              page: page++,
+              fields: ['id'],
+              limit: 100,
+            });
+            for (const note of response.items) {
+              allNoteIds.push(note.id);
+            }
+          } while (response.has_more != false);
+        }
 
         console.debug(`[Random Note] Total notes: ${allNoteIds.length}`);
         if (!allNoteIds.length) return;
@@ -190,6 +227,24 @@ joplin.plugins.register({
       },
     });
 
+    await joplin.commands.register({
+      name: 'notebookContextMenuAddRoot',
+      label: 'Random Note: Add root notebook',
+      execute: async (notebookId: string) => {
+        console.debug(`[Random Note] Add root notebook: ${notebookId}`);
+        const rootNotebooks = arrayFromCsv(
+          await joplin.settings.value('rootNotebooks')
+        );
+        rootNotebooks.push(notebookId);
+        // Remove duplicated IDs: https://stackoverflow.com/a/9229821/7410886
+        const rootNotebooksUnique = Array.from(new Set(rootNotebooks));
+        await joplin.settings.setValue(
+          'rootNotebooks',
+          rootNotebooksUnique.join(',')
+        );
+      },
+    });
+
     // get settings
     const useCustomHotKey = await joplin.settings.value('useCustomHotkey');
 
@@ -264,6 +319,13 @@ joplin.plugins.register({
     await joplin.views.menuItems.create(
       'notebookContextMenuItem1',
       'notebookContextMenuExclude',
+      MenuItemLocation.FolderContextMenu
+    );
+
+    // Add a root notebook.
+    await joplin.views.menuItems.create(
+      'notebookContextMenuItem2',
+      'notebookContextMenuAddRoot',
       MenuItemLocation.FolderContextMenu
     );
   },
