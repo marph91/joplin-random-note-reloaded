@@ -1,12 +1,12 @@
 {
   "manifest_version": 1,
-  "id": "com.plugin.randomNotePlugin",
+  "id": "com.plugin.randomNoteReloadedPlugin",
   "app_min_version": "1.7",
-  "version": "1.0.3",
-  "name": "Random note",
-  "description": "Opens a random note from your vault",
-  "author": "Azamah Junior",
-  "homepage_url": "https://github.com/Kaid00/joplin-random-note/blob/master/README.md",
-  "repository_url": "https://github.com/Kaid00/joplin-random-note.git",
+  "version": "1.0.4",
+  "name": "Random Note Reloaded",
+  "description": "Opens a random note",
+  "author": "Fork: Marph, Original: Azamah Junior",
+  "homepage_url": "https://github.com/marph91/joplin-random-note-reloaded/blob/master/README.md",
+  "repository_url": "https://github.com/marph91/joplin-random-note-reloaded.git",
   "keywords": ["note", "random", "random note"]
 }
