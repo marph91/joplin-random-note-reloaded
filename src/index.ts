@@ -19,6 +19,7 @@ joplin.plugins.register({
 
     // Settings
     await joplin.settings.registerSettings({
+      // Accessibility
       showToolBarIcon: {
         value: true,
         type: SettingItemType.Bool,
@@ -46,6 +47,7 @@ joplin.plugins.register({
         label: 'Enter Custom Hotkey',
       },
 
+      // Note selection
       rootNotebooks: {
         value: '',
         type: SettingItemType.String,
@@ -81,6 +83,14 @@ joplin.plugins.register({
         description: 'Comma separated list of notebook IDs',
         label: 'Excluded Notebooks',
       },
+
+      excludeCompletedTodos: {
+        value: '',
+        type: SettingItemType.Bool,
+        section: 'openRandomNoteSection',
+        public: true,
+        label: 'Exclude completed todos',
+      },
     });
 
     // Commands
@@ -93,7 +103,7 @@ joplin.plugins.register({
           await joplin.settings.value('rootNotebooks')
         );
         let response;
-        let allNoteIds = [];
+        let allNotes = [];
         let page;
         if (rootNotebooks.length !== 0) {
           // get all notes in the root notebooks
@@ -107,13 +117,11 @@ joplin.plugins.register({
                 ['folders', notebookId, 'notes'],
                 {
                   page: page++,
-                  fields: ['id'],
+                  fields: ['id', 'is_todo', 'todo_completed'],
                   limit: 100,
                 }
               );
-              for (const note of response.items) {
-                allNoteIds.push(note.id);
-              }
+              allNotes.push(...response.items);
             } while (response.has_more != false);
           }
         } else {
@@ -124,17 +132,25 @@ joplin.plugins.register({
           do {
             response = await joplin.data.get(['notes'], {
               page: page++,
-              fields: ['id'],
+              fields: ['id', 'is_todo', 'todo_completed'],
               limit: 100,
             });
-            for (const note of response.items) {
-              allNoteIds.push(note.id);
-            }
+            allNotes.push(...response.items);
           } while (response.has_more != false);
         }
+        console.debug(`[Random Note] Total notes: ${allNotes.length}`);
+        if (!allNotes.length) return;
 
-        console.debug(`[Random Note] Total notes: ${allNoteIds.length}`);
-        if (!allNoteIds.length) return;
+        // exclude notes if they are a todo and completed
+        const excludeCompletedTodos = await joplin.settings.value(
+          'excludeCompletedTodos'
+        );
+        allNotes = excludeCompletedTodos
+          ? allNotes.filter((note) => !(note.is_todo && note.todo_completed))
+          : allNotes;
+        console.debug(
+          `[Random Note] Notes after todo filter: ${allNotes.length}`
+        );
 
         // exclude the currently selected note
         const currentNote = await joplin.workspace.selectedNote();
@@ -147,7 +163,7 @@ joplin.plugins.register({
           await joplin.settings.value('excludedNotebooks')
         );
         // get all notes in the notebook
-        const excludedNotebookNotes = [];
+        const excludedNotebookNoteIds = [];
         for (const notebookId of excludedNotebooks) {
           page = 1;
           do {
@@ -158,25 +174,23 @@ joplin.plugins.register({
             });
             page += 1;
             for (const note of response.items) {
-              excludedNotebookNotes.push(note.id);
+              excludedNotebookNoteIds.push(note.id);
             }
-            // excludedNotebookNotes.push(...response.items);
           } while (response.has_more);
         }
         // merge all excluded notes
         const allExcludedIdsUnique = Array.from(
-          new Set([currentNote.id].concat(excludedNotes, excludedNotebookNotes))
-        );
-        console.debug(
-          `[Random Note] Excluding ${allExcludedIdsUnique.length} notes.`
+          new Set(
+            [currentNote.id].concat(excludedNotes, excludedNotebookNoteIds)
+          )
         );
 
-        // finally exclude all notes to exclude
+        // finally exclude all manually specified notes
         // https://stackoverflow.com/a/1723220/7410886
-        const filteredNotes = allNoteIds.filter(
-          (x) => !allExcludedIdsUnique.includes(x)
+        const filteredNotes = allNotes.filter(
+          (note) => !allExcludedIdsUnique.includes(note.id)
         );
-        console.debug(`[Random Note] Selected notes: ${filteredNotes.length}`);
+        console.debug(`[Random Note] Notes after manual filter: ${filteredNotes.length}`);
 
         // choose a random note
         // https://stackoverflow.com/a/5915122/7410886
@@ -186,7 +200,7 @@ joplin.plugins.register({
         console.debug(`[Random Note] Random index: ${randomNoteIndex}`);
         await joplin.commands.execute(
           'openNote',
-          filteredNotes[randomNoteIndex]
+          filteredNotes[randomNoteIndex].id
         );
       },
     });
