@@ -9,6 +9,22 @@ function arrayFromCsv(csv: string) {
   return csv ? csv.split(',') : [];
 }
 
+async function getUnpaginated(path, query) {
+  // https://joplinapp.org/help/api/references/rest_api#pagination
+  let unpaginatedResults = [];
+  let page = 1;
+  let response;
+  do {
+    response = await joplin.data.get(path, {
+      ...query,
+      page: page++,
+      limit: 100,
+    });
+    unpaginatedResults.push(...response.items);
+  } while (response.has_more);
+  return unpaginatedResults;
+}
+
 joplin.plugins.register({
   onStart: async function () {
     // Registering section
@@ -102,41 +118,26 @@ joplin.plugins.register({
         const rootNotebooks = arrayFromCsv(
           await joplin.settings.value('rootNotebooks')
         );
-        let response;
         let allNotes = [];
-        let page;
         if (rootNotebooks.length !== 0) {
           // get all notes in the root notebooks
           console.debug(
             `[Random Note] Get notes from root notebooks: ${rootNotebooks}`
           );
+
           for (const notebookId of rootNotebooks) {
-            page = 1;
-            do {
-              response = await joplin.data.get(
-                ['folders', notebookId, 'notes'],
-                {
-                  page: page++,
-                  fields: ['id', 'is_todo', 'todo_completed'],
-                  limit: 100,
-                }
-              );
-              allNotes.push(...response.items);
-            } while (response.has_more != false);
+            const notebookNotes = await getUnpaginated(
+              ['folders', notebookId, 'notes'],
+              { fields: ['id', 'is_todo', 'todo_completed'] }
+            );
+            allNotes.push(...notebookNotes);
           }
         } else {
           // get all notes
           console.debug('[Random Note] Get all notes');
-          // https://joplinapp.org/help/api/references/rest_api#pagination
-          page = 1;
-          do {
-            response = await joplin.data.get(['notes'], {
-              page: page++,
-              fields: ['id', 'is_todo', 'todo_completed'],
-              limit: 100,
-            });
-            allNotes.push(...response.items);
-          } while (response.has_more != false);
+          allNotes = await getUnpaginated(['notes'], {
+            fields: ['id', 'is_todo', 'todo_completed'],
+          });
         }
         console.debug(`[Random Note] Total notes: ${allNotes.length}`);
         if (!allNotes.length) return;
@@ -165,18 +166,10 @@ joplin.plugins.register({
         // get all notes in the notebook
         const excludedNotebookNoteIds = [];
         for (const notebookId of excludedNotebooks) {
-          page = 1;
-          do {
-            response = await joplin.data.get(['folders', notebookId, 'notes'], {
-              page: page,
-              fields: ['id'],
-              limit: 100,
-            });
-            page += 1;
-            for (const note of response.items) {
-              excludedNotebookNoteIds.push(note.id);
-            }
-          } while (response.has_more);
+          const notes = await getUnpaginated(['folders', notebookId, 'notes'], {
+            fields: ['id'],
+          });
+          excludedNotebookNoteIds.push(...notes.map((note) => note.id));
         }
         // merge all excluded notes
         const allExcludedIdsUnique = Array.from(
@@ -190,7 +183,9 @@ joplin.plugins.register({
         const filteredNotes = allNotes.filter(
           (note) => !allExcludedIdsUnique.includes(note.id)
         );
-        console.debug(`[Random Note] Notes after manual filter: ${filteredNotes.length}`);
+        console.debug(
+          `[Random Note] Notes after manual filter: ${filteredNotes.length}`
+        );
 
         // choose a random note
         // https://stackoverflow.com/a/5915122/7410886
@@ -259,14 +254,6 @@ joplin.plugins.register({
       },
     });
 
-    // get settings
-    const useCustomHotKey = await joplin.settings.value('useCustomHotkey');
-
-    const customHotKey = await joplin.settings.value('customHotkey');
-    const showToolBarIcon = await joplin.settings.value('showToolBarIcon');
-
-    const defaultAccelerator = 'Ctrl+Alt+R';
-
     // Open random note via hotkey.
     // validating custom hotkey
     function validate(customHotKey) {
@@ -288,6 +275,9 @@ joplin.plugins.register({
       }
     }
 
+    const useCustomHotKey = await joplin.settings.value('useCustomHotkey');
+    const customHotKey = await joplin.settings.value('customHotkey');
+    const defaultAccelerator = 'Ctrl+Alt+R';
     let key;
     if (useCustomHotKey === false) {
       key = defaultAccelerator;
@@ -316,6 +306,7 @@ joplin.plugins.register({
     ]);
 
     // Open random note via toolbar icon.
+    const showToolBarIcon = await joplin.settings.value('showToolBarIcon');
     if (showToolBarIcon) {
       await joplin.views.toolbarButtons.create(
         'openRandomNoteMenuViaToolbar',

@@ -4,7 +4,7 @@
   "app_min_version": "1.7",
   "version": "1.0.4",
   "name": "Random Note Reloaded",
-  "description": "Opens a random note",
+  "description": "Opens a random note from your workspace",
   "author": "Fork: Marph, Original: Azamah Junior",
   "homepage_url": "https://github.com/marph91/joplin-random-note-reloaded/blob/master/README.md",
   "repository_url": "https://github.com/marph91/joplin-random-note-reloaded.git",
