@@ -1,12 +1,13 @@
 # Joplin Random Note Reloaded
 
-The plugin opens a note at random from your vault, after installing the plugin you can create a custom hotkey that opens a note at random, or use the defualt hotkey `Ctrl+Alt+R`.
+The plugin opens a note at random from your vault, after installing the plugin you can create a custom hotkey that opens a note at random, or use the default hotkey `Ctrl+Alt+R`.
 
 Forked from <https://github.com/Kaid00/joplin-random-note>.
 
 ## Table of contents
 
 - [Installation](#installation)
+- [Features](#features)
 - [Usage](#usage)
 - [Development](#development)
 - [Building the plugin](#building-the-plugin)
@@ -34,7 +35,7 @@ Forked from <https://github.com/Kaid00/joplin-random-note>.
 
 ## Usage
 
-### Defualt Hotkey
+### Default Hotkey
 
 By default you can use the hotkey `Ctrl+Alt+R` to open a random note.
 
