@@ -1,16 +1,16 @@
-import joplin from "api";
+import joplin from 'api';
 import {
   MenuItemLocation,
   ToolbarButtonLocation,
   SettingItemType,
-} from "api/types";
+} from 'api/types';
 
 joplin.plugins.register({
   onStart: async function () {
-    //Registering Section
-    await joplin.settings.registerSection("openRandomNoteSection", {
-      label: "Random Note Reloaded",
-      iconName: "fas fa-random",
+    // Registering section
+    await joplin.settings.registerSection('openRandomNoteSection', {
+      label: 'Random Note Reloaded',
+      iconName: 'fas fa-random',
     });
 
     // Settings
@@ -18,147 +18,135 @@ joplin.plugins.register({
       showToolBarIcon: {
         value: true,
         type: SettingItemType.Bool,
-        section: "openRandomNoteSection",
-        label: "Show Tool Bar Button",
+        section: 'openRandomNoteSection',
+        label: 'Show Tool Bar Button',
         public: true,
-        description: "Alternative to using Hotkeys to open random notes",
+        description: 'Alternative to using Hotkeys to open random notes',
       },
 
       useCustomHotkey: {
         value: false,
         type: SettingItemType.Bool,
-        section: "openRandomNoteSection",
-        label: "Use Custom Hotkey",
+        section: 'openRandomNoteSection',
+        label: 'Use Custom Hotkey',
         public: true,
-        description: "Enter custom hotkey after selecting this option",
+        description: 'Enter custom hotkey after selecting this option',
       },
 
       customHotkey: {
-        value: "Ctrl+Alt+R",
+        value: 'Ctrl+Alt+R',
         type: SettingItemType.String,
-        section: "openRandomNoteSection",
+        section: 'openRandomNoteSection',
         public: true,
-        description: "Separate your keys with a +",
-        label: "Enter Custom Hotkey",
+        description: 'Separate your keys with a +',
+        label: 'Enter Custom Hotkey',
       },
     });
 
     // Commands
     await joplin.commands.register({
-      name: "openRandomNote",
-      label: "Open a random note",
-      iconName: "fas fa-random",
+      name: 'openRandomNote',
+      label: 'Open a random note',
+      iconName: 'fas fa-random',
       execute: async () => {
-        let notesPerPage;
+        // get all notes
+        // https://joplinapp.org/help/api/references/rest_api#pagination
+        let response;
         let notes = [];
         let pageNumber = 1;
-
-        // get all notes
         do {
-          notesPerPage = await joplin.data.get(["notes"], {
+          response = await joplin.data.get(['notes'], {
             page: pageNumber++,
             limit: 100,
           });
+          notes.push(...response.items);
+        } while (response.has_more != false);
 
-          notes.push(notesPerPage);
-        } while (notesPerPage.has_more != false);
+        console.log(`[Random Note] Total notes: ${notes.length}`);
+        if (!notes.length) return;
 
-        const noteIndex = Math.floor(Math.random() * notes.length);
+        // exclude the currently selected note
+        const currentNote = await joplin.workspace.selectedNote();
+        const filteredNotes = notes.filter((note) => {
+          if (currentNote.id != note.id) {
+            return note;
+          }
+        });
 
-        // If notes exist in vault
-
-        if (notes[noteIndex].items) {
-          // deconstructing the notes array
-          let flatNotes = [];
-          notes.forEach((el) => {
-            console.log(el.items);
-
-            el.items.forEach((element) => {
-              flatNotes.push(element);
-            });
-          });
-
-          // get current note
-          const currentNote = await joplin.workspace.selectedNote();
-
-          // excluding currently selected note
-          const filteredNotes = flatNotes.filter((note) => {
-            if (currentNote.id != note.id) {
-              return note;
-            }
-          });
-
-          // calculating a random note id
-          const randomNoteId = Math.floor(Math.random() * filteredNotes.length);
-          console.log("random id", randomNoteId);
-          await joplin.commands.execute(
-            "openNote",
-            filteredNotes[randomNoteId].id
-          );
-        }
+        // choose a random note
+        // https://stackoverflow.com/a/5915122/7410886
+        const randomNoteIndex = Math.floor(
+          Math.random() * filteredNotes.length
+        );
+        console.log(`[Random Note] Random index: ${randomNoteIndex}`);
+        await joplin.commands.execute(
+          'openNote',
+          filteredNotes[randomNoteIndex].id
+        );
       },
     });
 
-    // Get Settings Options
-    let useCustomHotKey = await joplin.settings.value("useCustomHotkey");
+    // get settings
+    const useCustomHotKey = await joplin.settings.value('useCustomHotkey');
 
-    const customHotKey = await joplin.settings.value("customHotkey");
-    const toolBarDecision = await joplin.settings.value("showToolBarIcon");
+    const customHotKey = await joplin.settings.value('customHotkey');
+    const showToolBarIcon = await joplin.settings.value('showToolBarIcon');
 
-    const defualtAccelerator = "Ctrl+Alt+R";
+    const defaultAccelerator = 'Ctrl+Alt+R';
 
+    // Open random note via hotkey.
     // validating custom hotkey
-
     function validate(customHotKey) {
-      if (customHotKey != "" || customHotKey != " ") {
+      if (customHotKey.trim() != '') {
         // Regex to get all whitespace
         const regex = /\s+/g;
         let validatedHotKeys;
-        const cleanWhiteSpace = customHotKey.replace(regex, "");
-        const spaceCustom = cleanWhiteSpace.replace(/\+/g, " ");
+        const cleanWhiteSpace = customHotKey.replace(regex, '');
+        const spaceCustom = cleanWhiteSpace.replace(/\+/g, ' ');
 
-        const keySplit = spaceCustom.split(" ");
+        const keySplit = spaceCustom.split(' ');
 
         const wordValidate = keySplit.map((word) => {
           return (word = word[0].toUpperCase() + word.substr(1));
         });
 
-        validatedHotKeys = wordValidate.join("+");
+        validatedHotKeys = wordValidate.join('+');
         return validatedHotKeys;
       }
     }
 
     let key;
-
     if (useCustomHotKey === false) {
-      key = defualtAccelerator;
+      key = defaultAccelerator;
     } else {
       if (customHotKey.length > 0) {
         key = validate(customHotKey);
       } else {
-        await joplin.settings.setValue("customHotkey", defualtAccelerator);
-        key = defualtAccelerator;
+        await joplin.settings.setValue('customHotkey', defaultAccelerator);
+        key = defaultAccelerator;
       }
     }
 
+    // Open random note via menu.
     await joplin.views.menuItems.create(
-      "openRandomNoteMenu",
-      "openRandomNote",
+      'openRandomNoteMenu',
+      'openRandomNote',
       MenuItemLocation.EditorContextMenu,
       { accelerator: key }
     );
 
-    await joplin.views.menus.create("myMenu", "Open Random Note", [
+    await joplin.views.menus.create('myMenu', 'Open Random Note', [
       {
-        commandName: "openRandomNote",
+        commandName: 'openRandomNote',
         accelerator: key,
       },
     ]);
 
-    if (toolBarDecision) {
+    // Open random note via toolbar icon.
+    if (showToolBarIcon) {
       await joplin.views.toolbarButtons.create(
-        "openRandomNoteMenuViaToolbar",
-        "openRandomNote",
+        'openRandomNoteMenuViaToolbar',
+        'openRandomNote',
         ToolbarButtonLocation.EditorToolbar
       );
     }
