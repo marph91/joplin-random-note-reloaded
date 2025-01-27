@@ -8,5 +8,6 @@
   "author": "Fork: Marph, Original: Azamah Junior",
   "homepage_url": "https://github.com/marph91/joplin-random-note-reloaded/",
   "repository_url": "https://github.com/marph91/joplin-random-note-reloaded.git",
+  "platforms": ["mobile", "desktop"],
   "keywords": ["note", "random", "random note"]
 }
