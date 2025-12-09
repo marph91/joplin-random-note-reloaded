@@ -1,6 +1,6 @@
 {
   "name": "joplin-plugin-random-note-reloaded",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "homepage": "https://github.com/marph91/joplin-random-note-reloaded/",
   "scripts": {
     "dist": "webpack --joplin-plugin-config buildMain && webpack --joplin-plugin-config buildExtraScripts && webpack --joplin-plugin-config createArchive",

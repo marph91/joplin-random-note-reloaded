@@ -1,8 +1,8 @@
 {
   "manifest_version": 1,
   "id": "com.plugin.randomNoteReloadedPlugin",
-  "app_min_version": "1.7",
-  "version": "1.0.5",
+  "app_min_version": "3.0.0",
+  "version": "1.0.6",
   "name": "Random Note Reloaded",
   "description": "Opens a random note from your workspace",
   "author": "Fork: Marph, Original: Azamah Junior",
