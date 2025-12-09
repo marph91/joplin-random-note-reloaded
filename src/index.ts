@@ -126,10 +126,25 @@ joplin.plugins.register({
           );
 
           for (const notebookId of rootNotebooks) {
-            const notebookNotes = await getUnpaginated(
-              ['folders', notebookId, 'notes'],
-              { fields: ['id', 'is_todo', 'todo_completed'] }
-            );
+            let notebookNotes: {
+              id: String;
+              is_todo: boolean;
+              todo_colpleted: boolean;
+            }[];
+            try {
+              notebookNotes = await getUnpaginated(
+                ['folders', notebookId, 'notes'],
+                { fields: ['id', 'is_todo', 'todo_completed'] }
+              );
+            } catch (e) {
+              console.debug(
+                '[Random Note] Root Notebook:',
+                notebookId,
+                'Error:',
+                e.message
+              );
+              continue;
+            }
             allNotes.push(...notebookNotes);
           }
         } else {
@@ -153,8 +168,8 @@ joplin.plugins.register({
           `[Random Note] Notes after todo filter: ${allNotes.length}`
         );
 
-        // exclude the currently selected note
-        const currentNote = await joplin.workspace.selectedNote();
+        // exclude the currently selected note(s)
+        const currentNoteIds = await joplin.workspace.selectedNoteIds();
         // excluded notes from settings
         const excludedNotes = arrayFromCsv(
           await joplin.settings.value('excludedNotes')
@@ -166,16 +181,25 @@ joplin.plugins.register({
         // get all notes in the notebook
         const excludedNotebookNoteIds = [];
         for (const notebookId of excludedNotebooks) {
-          const notes = await getUnpaginated(['folders', notebookId, 'notes'], {
-            fields: ['id'],
-          });
+          let notes: { id: String }[];
+          try {
+            notes = await getUnpaginated(['folders', notebookId, 'notes'], {
+              fields: ['id'],
+            });
+          } catch (e) {
+            console.debug(
+              '[Random Note] Excluded Notebook:',
+              notebookId,
+              'Error:',
+              e.message
+            );
+            continue;
+          }
           excludedNotebookNoteIds.push(...notes.map((note) => note.id));
         }
         // merge all excluded notes
         const allExcludedIdsUnique = Array.from(
-          new Set(
-            [currentNote.id].concat(excludedNotes, excludedNotebookNoteIds)
-          )
+          new Set(currentNoteIds.concat(excludedNotes, excludedNotebookNoteIds))
         );
 
         // finally exclude all manually specified notes
