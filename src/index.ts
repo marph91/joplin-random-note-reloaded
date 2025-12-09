@@ -69,7 +69,8 @@ joplin.plugins.register({
         type: SettingItemType.String,
         section: 'openRandomNoteSection',
         public: true,
-        description: 'Consider notes from these notebooks only',
+        description:
+          'Consider notes from these notebooks only (comma separated list of notebook IDs)',
         label: 'Root Notebooks',
       },
 
