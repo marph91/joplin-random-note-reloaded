@@ -6,7 +6,7 @@ import {
 } from 'api/types';
 
 function arrayFromCsv(csv: string) {
-  return csv ? csv.split(',') : [];
+  return csv ? csv.split(',').map((value) => value.trim()) : [];
 }
 
 async function getUnpaginated(path, query) {
