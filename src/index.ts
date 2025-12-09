@@ -55,7 +55,7 @@ joplin.plugins.register({
       },
 
       customHotkey: {
-        value: 'Ctrl+Alt+R',
+        value: 'Ctrl+Shift+R',
         type: SettingItemType.String,
         section: 'openRandomNoteSection',
         public: true,
